@@ -242,3 +242,8 @@ telegram.error.NetworkError: urllib3 HTTPError ('Connection aborted.', RemoteDis
 2023-06-10 10:55:23,163 Scheduler started 
 2023-06-10 11:04:37,837 Received signal 15 (SIGTERM), stopping... 
 2023-06-10 11:04:37,839 Scheduler has been shut down 
+2023-06-10 17:09:19,390 Adding job tentatively -- it will be properly scheduled when the scheduler starts 
+2023-06-10 17:09:19,391 Adding job tentatively -- it will be properly scheduled when the scheduler starts 
+2023-06-10 17:09:19,641 Added job "256144138" to job store "default" 
+2023-06-10 17:09:19,642 Added job "728916533" to job store "default" 
+2023-06-10 17:09:19,642 Scheduler started 
