@@ -10,6 +10,7 @@ from telegram.ext import CommandHandler, MessageHandler, CallbackQueryHandler
 
 import keyboards
 from moon_db import MoonData, MoonUser
+from collections import namedtuple
 import lexicon
 
 import os
@@ -20,7 +21,8 @@ if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
 
 def start(update: Update, context: CallbackContext) -> None:
-    '''Deals with start input'''
+    '''Handles start command'''
+
     if update.message:
         update.message.reply_text(
                 text= lexicon.start_greeting,
@@ -30,35 +32,58 @@ def start(update: Update, context: CallbackContext) -> None:
                 text=lexicon.start_greeting,
                 reply_markup=keyboards.start_keyboard)
 
+def validate_time(time) -> tuple:
+    '''Checks if input in update is valid for using in job queue'''
+
+    get_time = re.match(r'(\d\d):(\d\d)', time)
+    hours, minutes = int(get_time.group(1)), int(get_time.group(2)) 
+    if 0 <= hours < 24 and 0 <= minutes < 60:
+        MoonTime = namedtuple('MoonTime', ['hours', 'minutes'])
+        return MoonTime(hours, minutes)
+    return ()
+
+def update_job(queue, job_name, moon_time, user_id) -> None:
+    '''Creates a new job or updates time of existing job'''
+
+    hours, minutes = moon_time
+    if job := queue.get_jobs_by_name(job_name):
+        job[0].schedule_removal() 
+        queue.run_daily(send_a_moon_info, 
+                time(hour=hours, minute=minutes, tzinfo=TIME_ZONE), 
+                name = str(user_id),
+                context=user_id)
+        MoonUser().set_user_time(user_id, f'{hours}:{minutes}')
 
 def set_notification_time(update: Update, context: CallbackContext) -> None:
+    '''Handles setting notification time'''
+
     if callback := update.callback_query:
         callback.edit_message_text(
-                text = lexicon.set_notification_time_offer,
-                reply_markup = keyboards.show_set_time_callback_keyboard
-                )
+            text = lexicon.set_notification_time_offer,
+            reply_markup = keyboards.show_set_time_callback_keyboard
+            )
     else:
-        get_time = re.match(r'(\d\d):(\d\d)', update.message.text)
-        if get_time:
-            hours, minutes = int(get_time.group(1)), int(get_time.group(2)) 
-            if 0 < hours < 24 and 0 < minutes < 60:
-                update.message.reply_text(
-                        text=lexicon.set_notification_time_success.format(update.message.text),
-                        reply_markup=keyboards.set_notification_time_seccess)
-                queue: JobQueue | None = context.job_queue
+        if moon_time := validate_time(update.message.text):
+            update.message.reply_text(
+                    text=lexicon.set_notification_time_success.format(update.message.text),
+                    reply_markup=keyboards.set_notification_time_seccess)
 
-                if job := queue.get_jobs_by_name(str(update.message.from_user.id)):
-                    job[0].schedule_removal() 
-                queue.run_daily(send_a_moon_info, 
-                        time(hour=hours, minute=minutes, tzinfo=TIME_ZONE), 
-                        name = str(update.message.from_user.id),
-                        context=update.message.from_user.id)
-                MoonUser().set_user_time(update.message.from_user.id, f'{hours}:{minutes}')
+            queue: JobQueue | None = context.job_queue
+            user_id: int = update.message.from_user.id
+           
+            update_job(queue, str(update.message.from_user.id), moon_time, user_id)
         else:
-            update.message.reply_text(text=lexicon.set_notification_time_failure + 
-                    '\n' +
-                    lexicon.set_notification_time_offer,
-                    reply_markup=keyboards.show_set_time_callback_keyboard)
+            wrong_text_input(update, context)
+
+
+def wrong_text_input(update: Update, context: CallbackContext) -> None:
+    '''Handles a response when wrong text input recieved'''
+
+    update.message.reply_text(text=lexicon.set_notification_time_failure + 
+            '\n' +
+            lexicon.set_notification_time_offer,
+            reply_markup=keyboards.show_set_time_callback_keyboard)
+
 
 def send_a_moon_info(context: CallbackContext) -> None:
     '''Send today info at specified time'''
@@ -75,6 +100,7 @@ def send_a_moon_info(context: CallbackContext) -> None:
 
 def get_info(update: Update, context: CallbackContext) -> None:
     '''Show MOON_INFO data'''
+
     moon_data: dict = MoonData().get_moon_data()
     headers = {key: value.header for key, value in moon_data.items()}
 
@@ -142,12 +168,14 @@ if __name__ == "__main__":
     user_details_handler = CallbackQueryHandler(show_user_info, pattern='show_user_details')
     time_set_callback_handler = CallbackQueryHandler(set_notification_time, pattern='set_notification_time')
     chvakson_handler = MessageHandler(Filters.regex(os.getenv(r"chvakson_pattern")), chvakson_response)
-    time_set_message_text_handler = MessageHandler(Filters.text, set_notification_time)
+    time_set_message_text_handler = MessageHandler(Filters.regex(r'\d\d:\d\d'), set_notification_time)
+    wrong_message_handler = MessageHandler(Filters.text, wrong_text_input)
 
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(chvakson_handler)
     dispatcher.add_handler(time_set_callback_handler)
     dispatcher.add_handler(time_set_message_text_handler)
+    dispatcher.add_handler(wrong_message_handler)
     dispatcher.add_handler(today_handler)
     dispatcher.add_handler(moon_details_handler)
     dispatcher.add_handler(go_back_handler)
