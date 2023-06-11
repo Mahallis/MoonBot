@@ -18,6 +18,19 @@ dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
 
+
+def start(update: Update, context: CallbackContext) -> None:
+    '''Handles start command'''
+
+    if update.message:
+        update.message.reply_text(
+                text= lexicon.start_greeting,
+                reply_markup=keyboards.start_keyboard)
+    else:
+        update.callback_query.edit_message_text(
+                text=lexicon.start_greeting,
+                reply_markup=keyboards.start_keyboard)
+
 def validate_time(time) -> tuple:
     '''Checks if input in update is valid for using in job queue'''
 

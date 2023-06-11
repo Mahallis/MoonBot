@@ -1,16 +1,13 @@
-from datetime import time 
 from pytz import timezone
 
 import logging
 
-from telegram import Update
-from telegram.ext import Updater, Filters, CallbackContext, Defaults 
+from telegram.ext import Updater, Filters, Defaults 
 from telegram.ext import CommandHandler, MessageHandler, CallbackQueryHandler
 
-import keyboards
-from moon_db import MoonData, MoonUser
-import lexicon
+from moon_db import MoonData 
 from services import services
+import config
 
 import os
 from dotenv import load_dotenv
@@ -19,18 +16,6 @@ from dotenv import load_dotenv
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
-
-def start(update: Update, context: CallbackContext) -> None:
-    '''Handles start command'''
-
-    if update.message:
-        update.message.reply_text(
-                text= lexicon.start_greeting,
-                reply_markup=keyboards.start_keyboard)
-    else:
-        update.callback_query.edit_message_text(
-                text=lexicon.start_greeting,
-                reply_markup=keyboards.start_keyboard)
 
 # RUNNING
 if __name__ == "__main__":
@@ -42,21 +27,15 @@ if __name__ == "__main__":
     updater = Updater(token=os.getenv("BOT_TOKEN"))
     Defaults(tzinfo=TIME_ZONE)
     
-    for user_time in MoonUser().get_all_users():
-        hours, minutes = map(int, user_time.notify_time.split(':'))
-        updater.job_queue.run_daily(services.send_a_moon_info,
-                    time(hour=hours, minute=minutes, tzinfo=TIME_ZONE),
-                    name = str(user_time.user_id),
-                    context = user_time.user_id
-                    )
 
+    config.set_time_after_restart(updater, TIME_ZONE)
     dispatcher = updater.dispatcher
     updater.bot.set_chat_menu_button()
 
 
     # HANDLERS
-    start_handler = CommandHandler('start', start)
-    go_back_handler = CallbackQueryHandler(start, pattern='back')
+    start_handler = CommandHandler('start', services.start)
+    go_back_handler = CallbackQueryHandler(services.start, pattern='back')
 
     today_handler = CallbackQueryHandler(services.get_info, pattern='get_today_info')
     moon_details_handler = CallbackQueryHandler(services.get_info, pattern=lambda x: x in MoonData().get_moon_data().keys())
@@ -76,7 +55,6 @@ if __name__ == "__main__":
     dispatcher.add_handler(moon_details_handler)
     dispatcher.add_handler(go_back_handler)
     dispatcher.add_handler(user_details_handler)
-
 
 
     updater.start_polling(drop_pending_updates=True)
