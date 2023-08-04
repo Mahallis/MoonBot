@@ -133,3 +133,11 @@ def chvakson_response(update: Update, context: CallbackContext) -> None:
     else:
         update.message.reply_text(
                 text='Если Вас Алексей Чванов научил этому, то пусть сам идет туда')
+
+def firuza_response(update: Update, context: CallbackContext) -> None:
+    if update.message.from_user.username == 'samirobojusabinaklass':
+        update.message.reply_text(
+                text="Не балуйся, я буду резать всё палчики!!") 
+    else:
+        update.message.reply_text(
+                text='Вы недостаточно фирузисты')
