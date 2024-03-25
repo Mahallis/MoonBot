@@ -1,3 +1,5 @@
 venv/
 __pycache__/
 nohup.out
+.mypy_cache/
+database/test.dump
