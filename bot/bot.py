@@ -6,8 +6,7 @@ from telegram.ext import Updater, Filters, Defaults, Dispatcher
 from telegram.ext import CommandHandler, MessageHandler, CallbackQueryHandler
 
 from moon_db import MoonData
-from services import services
-import config
+import config, services
 
 import os
 from dotenv import load_dotenv

@@ -3,3 +3,4 @@ __pycache__/
 nohup.out
 .mypy_cache/
 database/test.dump
+test.dump

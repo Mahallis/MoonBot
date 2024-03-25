@@ -14,6 +14,6 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-EXPOSE 8000
+EXPOSE 5432
 
 CMD ["python3.10", "bot.py"] 
